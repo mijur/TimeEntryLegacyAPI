@@ -1,0 +1,31 @@
+# .NET / Visual Studio
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userprefs
+*.rsuser
+*.DotSettings*
+
+# Build outputs
+**/bin/
+**/obj/
+
+# Rider / JetBrains
+.idea/
+
+# VS Code
+.vscode/
+
+# Test results
+TestResult*/
+TestResults/
+
+# Logs and caches
+*.log
+*.cache
+
+# OS files
+Thumbs.db
+.DS_Store
