@@ -52,9 +52,9 @@ namespace TimeEntryLegacyAPI.Controllers
             var bonus = 0m;
             
             // Night shift bonus (10pm - 6am)
-            for (var dt = entry.StartTime; dt < entry.EndTime; dt = dt.AddHours(1))
+            for (var dt = entry.StartTime; dt <= entry.EndTime; dt = dt.AddHours(1))
             {
-                if (dt.Hour >= 22 || dt.Hour < 6)
+                if (dt.Hour > 22 || dt.Hour < 6)
                 {
                     bonus += entry.HourlyRate * 0.5m;
                 }
@@ -103,6 +103,10 @@ namespace TimeEntryLegacyAPI.Controllers
         [HttpPost("calculate")]
         public IActionResult CalculatePay([FromBody] TimeEntry entry)
         {
+            var validationResult = ValidateTimeEntry(entry);
+            if (validationResult != null)
+            return validationResult;
+
             var hours = (entry.EndTime - entry.StartTime).TotalHours;
             var basePay = 0m;
             
