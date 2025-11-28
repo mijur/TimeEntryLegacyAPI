@@ -7,6 +7,7 @@ namespace TimeEntryLegacyAPI.Services
 {
     public class PayrollCalculator
     {
+        private readonly IOvertimeCalculator _overtimeCalculator; // may be null when constructed without DI
         // Employee types
         private const string EmployeeTypeFte = "FTE";
         private const string EmployeeTypeContractor = "Contractor";
@@ -25,7 +26,13 @@ namespace TimeEntryLegacyAPI.Services
         // Hours / thresholds
         private const int NightShiftStartHour = 22;
         private const int NightShiftEndHour = 6;
-        private const double OvertimeThresholdHours = 40.0;
+        private const double OvertimeThresholdHours = 40.0; // fallback when no country policy or calculator
+                public PayrollCalculator() { }
+
+                public PayrollCalculator(IOvertimeCalculator overtimeCalculator)
+                {
+                    _overtimeCalculator = overtimeCalculator;
+                }
         private const int LoyaltyYearsThreshold1 = 5;
         private const int LoyaltyYearsThreshold2 = 10;
 
@@ -90,12 +97,22 @@ namespace TimeEntryLegacyAPI.Services
                 breakdown += $"Loyalty bonus (10+ years): ${loyaltyBonus:F2}\n";
             }
 
-            if (hours > OvertimeThresholdHours)
+            // Overtime calculation: prefer injected calculator with country policy; fallback to static threshold
+            double overtimeHoursCalculated = 0;
+            if (_overtimeCalculator != null && !string.IsNullOrWhiteSpace(entry.CountryCode))
             {
-                var overtimeHours = hours - OvertimeThresholdHours;
-                var overtimeBonus = (decimal)overtimeHours * entry.HourlyRate * OvertimeBonusMultiplier;
+                overtimeHoursCalculated = _overtimeCalculator.CalculateOvertime(entry.CountryCode, hours);
+            }
+            else if (hours > OvertimeThresholdHours)
+            {
+                overtimeHoursCalculated = hours - OvertimeThresholdHours;
+            }
+
+            if (overtimeHoursCalculated > 0)
+            {
+                var overtimeBonus = (decimal)overtimeHoursCalculated * entry.HourlyRate * OvertimeBonusMultiplier;
                 bonus += overtimeBonus;
-                breakdown += $"Overtime: {overtimeHours}h @ 50% = ${overtimeBonus:F2}\n";
+                breakdown += $"Overtime: {overtimeHoursCalculated}h @ 50% = ${overtimeBonus:F2}\n";
             }
 
             return (bonus, breakdown);

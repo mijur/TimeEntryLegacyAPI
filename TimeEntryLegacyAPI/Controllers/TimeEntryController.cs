@@ -12,10 +12,12 @@ namespace TimeEntryLegacyAPI.Controllers
     public class TimeEntryController : ControllerBase
     {
         private readonly PayrollCalculator _payrollCalculator;
+        private readonly TimeEntryValidator _validator;
 
-        public TimeEntryController(PayrollCalculator payrollCalculator)
+        public TimeEntryController(PayrollCalculator payrollCalculator, TimeEntryValidator validator)
         {
             _payrollCalculator = payrollCalculator;
+            _validator = validator;
         }
         private static List<TimeEntry> _timeEntries = new List<TimeEntry>();
         private static int _nextId = 1;
@@ -38,6 +40,12 @@ namespace TimeEntryLegacyAPI.Controllers
         [HttpPost]
         public IActionResult Create([FromBody] TimeEntry entry)
         {
+            var validation = _validator.Validate(entry);
+            if (!validation.IsValid)
+            {
+                return BadRequest(validation.ErrorMessage);
+            }
+
             entry.Id = _nextId++;
             var hours = (entry.EndTime - entry.StartTime).TotalHours;
             var basePay = _payrollCalculator.CalculateBasePay(entry, hours);
@@ -52,6 +60,12 @@ namespace TimeEntryLegacyAPI.Controllers
         [HttpPost("calculate")]
         public IActionResult CalculatePay([FromBody] TimeEntry entry)
         {
+            var validation = _validator.Validate(entry);
+            if (!validation.IsValid)
+            {
+                return BadRequest(validation.ErrorMessage);
+            }
+
             var hours = (entry.EndTime - entry.StartTime).TotalHours;
             var basePay = _payrollCalculator.CalculateBasePay(entry, hours);
             var (bonus, breakdown) = _payrollCalculator.CalculateBonusesWithBreakdown(entry, hours, basePay);
@@ -74,6 +88,12 @@ namespace TimeEntryLegacyAPI.Controllers
             var existing = _timeEntries.FirstOrDefault(e => e.Id == id);
             if (existing == null)
                 return NotFound();
+
+            var validation = _validator.Validate(entry);
+            if (!validation.IsValid)
+            {
+                return BadRequest(validation.ErrorMessage);
+            }
 
             existing.EmployeeName = entry.EmployeeName;
             existing.EmployeeType = entry.EmployeeType;
@@ -108,16 +128,16 @@ namespace TimeEntryLegacyAPI.Controllers
         {
             var endDate = startDate.AddDays(7);
             var entries = _timeEntries
-                .Where(e => e.EmployeeId == employeeId && 
-                           e.StartTime >= startDate && 
+                .Where(e => e.EmployeeId == employeeId &&
+                           e.StartTime >= startDate &&
                            e.StartTime < endDate)
                 .ToList();
 
             var totalHours = entries.Sum(e => (e.EndTime - e.StartTime).TotalHours);
             var totalPay = entries.Sum(e => e.TotalPay);
 
-            return Ok(new 
-            { 
+            return Ok(new
+            {
                 EmployeeId = employeeId,
                 StartDate = startDate,
                 EndDate = endDate,
@@ -125,6 +145,6 @@ namespace TimeEntryLegacyAPI.Controllers
                 TotalPay = totalPay,
                 Entries = entries
             });
-        }     
+        }
     }
 }

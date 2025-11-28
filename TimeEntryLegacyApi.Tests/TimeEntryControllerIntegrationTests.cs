@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -12,7 +13,14 @@ public class TimeEntryControllerIntegrationTests : IClassFixture<WebApplicationF
 
     public TimeEntryControllerIntegrationTests(WebApplicationFactory<Program> factory)
     {
-        _factory = factory.WithWebHostBuilder(builder => { });
+        _factory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.AddSingleton<TimeEntryLegacyAPI.Services.PayrollCalculator>();
+                services.AddSingleton<TimeEntryLegacyAPI.Services.TimeEntryValidator>();
+            });
+        });
     }
 
     [Fact]
@@ -385,11 +393,10 @@ public class TimeEntryControllerIntegrationTests : IClassFixture<WebApplicationF
     }
 
     [Fact]
-    public async Task Calculate_ZeroAndNegativeDurationAsync()
+    public async Task Calculate_ZeroDurationAsync_ReturnsZeroPayAsync()
     {
         var client = _factory.CreateClient();
 
-        // zero duration
         var zeroReq = new
         {
             EmployeeId = 300,
@@ -407,8 +414,13 @@ public class TimeEntryControllerIntegrationTests : IClassFixture<WebApplicationF
         var pZero = await rZero.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(0.0m, pZero.GetProperty("basePay").GetDecimal());
         Assert.Equal(0.0m, pZero.GetProperty("bonusPay").GetDecimal());
+    }
 
-        // negative duration (end before start) -> controller currently computes negative basePay
+    [Fact]
+    public async Task Calculate_NegativeDuration_ReturnsBadRequestAsync()
+    {
+        var client = _factory.CreateClient();
+
         var negReq = new
         {
             EmployeeId = 301,
@@ -422,12 +434,6 @@ public class TimeEntryControllerIntegrationTests : IClassFixture<WebApplicationF
         };
 
         var rNeg = await client.PostAsJsonAsync("/api/timeentry/calculate", negReq);
-        Assert.Equal(HttpStatusCode.OK, rNeg.StatusCode);
-        var pNeg = await rNeg.Content.ReadFromJsonAsync<JsonElement>();
-        var baseNeg = pNeg.GetProperty("basePay").GetDecimal();
-        var totalNeg = pNeg.GetProperty("totalPay").GetDecimal();
-
-        Assert.True(baseNeg < 0);
-        Assert.Equal(baseNeg + pNeg.GetProperty("bonusPay").GetDecimal(), totalNeg);
+        Assert.Equal(HttpStatusCode.BadRequest, rNeg.StatusCode);
     }
 }

@@ -67,7 +67,7 @@ public class PayrollCalculatorTests
     }
 
     [Fact]
-    public void CalculateBasePay_UnknownEmployeeType_ReturnsZero() 
+    public void CalculateBasePay_UnknownEmployeeType_ReturnsZero()
     {
         // Arrange
         var entry = new TimeEntry

@@ -4,6 +4,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddSingleton<PayrollCalculator>();
+builder.Services.AddSingleton<TimeEntryLegacyAPI.Models.IOvertimePolicyProvider, TimeEntryLegacyAPI.Models.OvertimePolicyProvider>();
+builder.Services.AddTransient<IOvertimeCalculator, OvertimeCalculator>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
