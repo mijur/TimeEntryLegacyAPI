@@ -52,9 +52,10 @@ namespace TimeEntryLegacyAPI.Controllers
             var bonus = 0m;
             
             // Night shift bonus (10pm - 6am)
-            for (var dt = entry.StartTime; dt <= entry.EndTime; dt = dt.AddHours(1))
+            // Use half-open interval [StartTime, EndTime) and include the 22:00 hour (>= 22)
+            for (var dt = entry.StartTime; dt < entry.EndTime; dt = dt.AddHours(1))
             {
-                if (dt.Hour > 22 || dt.Hour < 6)
+                if (dt.Hour >= 22 || dt.Hour < 6)
                 {
                     bonus += entry.HourlyRate * 0.5m;
                 }
