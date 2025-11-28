@@ -103,10 +103,6 @@ namespace TimeEntryLegacyAPI.Controllers
         [HttpPost("calculate")]
         public IActionResult CalculatePay([FromBody] TimeEntry entry)
         {
-            var validationResult = ValidateTimeEntry(entry);
-            if (validationResult != null)
-            return validationResult;
-
             var hours = (entry.EndTime - entry.StartTime).TotalHours;
             var basePay = 0m;
             
@@ -308,5 +304,27 @@ namespace TimeEntryLegacyAPI.Controllers
                 Entries = entries
             });
         }
+
+        // Helper method for validation
+        private IActionResult ValidateTimeEntry(TimeEntry entry)
+        {
+            if (entry.EndTime <= entry.StartTime)
+            {
+                return BadRequest("EndTime must be after StartTime.");
+            }
+            if (entry.HourlyRate <= 0)
+            {
+                return BadRequest("HourlyRate must be positive.");
+            }
+            var validTypes = new[] { "FTE", "Contractor", "PartTime" };
+            if (!validTypes.Contains(entry.EmployeeType))
+            {
+                return BadRequest("Invalid EmployeeType.");
+            }
+            return null;
+        }
+
+        // method for                
+
     }
 }
